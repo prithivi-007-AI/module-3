@@ -1,0 +1,80 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class StudentJDBCMySQL {
+    public static void main(String[] args) {
+        // 1. JDBC URL, username and password of MySQL server
+        final String URL      = "jdbc:mysql://localhost:3306/prince";
+        final String USER     = "root";
+        final String PASSWORD = "Adhi2004";
+
+        // 2. SQL statements
+        String createTableSQL =
+            "CREATE TABLE IF NOT EXISTS students (" +
+            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+            "name VARCHAR(50) NOT NULL, " +
+            "age INT NOT NULL, " +
+            "major VARCHAR(50)" +
+            ")";
+        String insertSQL  = "INSERT INTO students(name, age, major) VALUES (?, ?, ?)";
+        String selectSQL  = "SELECT id, name, age, major FROM students";
+
+        try {
+            // 3. Load the MySQL JDBC driver (not always required with newer JDBC)
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // 4. Establish connection
+            try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+                 Statement stmt = conn.createStatement();
+                 PreparedStatement psInsert = conn.prepareStatement(insertSQL);
+                 Scanner scanner = new Scanner(System.in)) {
+
+                // Create table if it doesn't exist
+                stmt.execute(createTableSQL);
+                System.out.println("✅ Table `students` is ready.");
+
+
+                // --- INSERTION LOOP ---
+                while (true) {
+                    System.out.print("Enter name (or 'exit' to quit): ");
+                    String name = scanner.nextLine().trim();
+                    if ("exit".equalsIgnoreCase(name)) break;
+
+                    System.out.print("Enter age: ");
+                    int age = Integer.parseInt(scanner.nextLine().trim());
+
+                    System.out.print("Enter major: ");
+                    String major = scanner.nextLine().trim();
+
+                    psInsert.setString(1, name);
+                    psInsert.setInt   (2, age);
+                    psInsert.setString(3, major);
+                    int rows = psInsert.executeUpdate();
+                    System.out.printf("Inserted %d row(s): %s, %d, %s%n", rows, name, age, major);
+                }
+
+                // --- RETRIEVAL & DISPLAY ---
+                System.out.println("\n🔍 Retrieving all records from `students`:");
+                try (ResultSet rs = stmt.executeQuery(selectSQL)) {
+                    System.out.printf("%-3s | %-20s | %-3s | %-20s%n", "ID", "NAME", "AGE", "MAJOR");
+                    System.out.println("-----------------------------------------------------------");
+                    while (rs.next()) {
+                        int    id    = rs.getInt("id");
+                        String rName = rs.getString("name");
+                        int    rAge  = rs.getInt("age");
+                        String rMjr  = rs.getString("major");
+                        System.out.printf("%3d | %-20s | %3d | %-20s%n", id, rName, rAge, rMjr);
+                    }
+                }
+
+                System.out.println("\nGoodbye!");
+            }
+        }
+        catch (ClassNotFoundException e) {
+            System.err.println("JDBC Driver not found: " + e.getMessage());
+        }
+        catch (SQLException e) {
+            System.err.println("SQL Error: " + e.getMessage());
+        }
+    }
+}
